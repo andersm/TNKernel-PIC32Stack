@@ -2,8 +2,8 @@
 
   TNKernel real-time kernel
 
-  Copyright © 2004, 2013 Yuri Tiomkin
-  PIC32 version modifications copyright © 2013 Anders Montonen
+  Copyright ï¿½ 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright ï¿½ 2013, 2014 Anders Montonen
   All rights reserved.
 
   Permission to use, copy, modify, and distribute this software in source
@@ -155,6 +155,8 @@ typedef struct _CDLL_QUEUE
 typedef struct _TN_TCB
 {
    unsigned int * task_stk;   //-- Pointer to task's top of stack
+   unsigned int bmxdudba;     //-- Start of stack mapping
+   unsigned int bmxdupba;     //-- End of stack mapping
    CDLL_QUEUE task_queue;     //-- Queue is used to include task in ready/wait lists
    CDLL_QUEUE timer_queue;    //-- Queue is used to include task in timer(timeout,etc.) list
    CDLL_QUEUE * pwait_queue;  //-- Ptr to object's(semaphor,event,etc.) wait list,

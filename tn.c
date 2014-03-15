@@ -2,8 +2,8 @@
 
   TNKernel real-time kernel
 
-  Copyright © 2004, 2013 Yuri Tiomkin
-  PIC32 version modifications copyright © 2013 Anders Montonen
+  Copyright ï¿½ 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright ï¿½ 2013, 2014 Anders Montonen
   All rights reserved.
 
   Permission to use, copy, modify, and distribute this software in source
@@ -62,7 +62,7 @@ volatile int tn_int_nest_count;
 void * tn_user_sp;               //-- Saved task stack pointer
 void * tn_int_sp;                //-- Saved ISR stack pointer
 
-align_attr_start unsigned int tn_int_stack[TN_INT_STACK_SIZE] align_attr_end;
+unsigned int tn_int_stack[TN_INT_STACK_SIZE] __attribute__((aligned(4), section("tn_int_stack")));
 
  //-- System tasks
 
@@ -137,7 +137,7 @@ void tn_start_system(void)
                   0,                              //-- task priority
                   &(tn_timer_task_stack           //-- task stack first addr in memory
                       [TN_TIMER_STACK_SIZE-1]),
-                  TN_TIMER_STACK_SIZE,            //-- task stack size (in int,not bytes)
+                  TN_TIMER_STACK_SIZE,            //-- task stack size (in int, not bytes)
                   NULL,                           //-- task function parameter
                   TN_TASK_TIMER);                 //-- Creation option
 
@@ -148,7 +148,7 @@ void tn_start_system(void)
                   TN_NUM_PRIORITY-1,              //-- task priority
                   &(tn_idle_task_stack            //-- task stack first addr in memory
                       [TN_IDLE_STACK_SIZE-1]),
-                  TN_IDLE_STACK_SIZE,             //-- task stack size (in int,not bytes)
+                  TN_IDLE_STACK_SIZE,             //-- task stack size (in int, not bytes)
                   NULL,                           //-- task function parameter
                   TN_TASK_IDLE);                  //-- Creation option
 

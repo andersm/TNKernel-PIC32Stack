@@ -1,43 +1,22 @@
-TNKernel-PIC32
-==============
+TNKernel-PIC32Stack
+=================
 
-A port of [TNKernel](http://www.tnkernel.com/ "TNKernel") for PIC32
+An experimental version of [TNKernel-PIC32](https://github.com/andersm/TNKernel-PIC32 "TNKernel-PIC32") featuring hardware stack overflow protection.
 
 ---
-TNKernel-PIC32 is a port of TNKernel 2.7, based on the Cortex-M3 version. For a full description of the kernel API, please see the [TNKernel project documentation](http://www.tnkernel.com/tn_description.html "TNKernel project documentation").
+##Usage
+To use TNKernel-PIC32Stack, set up your project as you would a normal TNKernel-PIC32 project, then just add the included linker script (*tn_port_linkerscript.x*).
+##Notes and limitations
+The **BMXERRDS** bit in the bus matrix configuration registers must not be cleared.  
+Due to hardware limitations, all thread stack allocations will be rounded up to to the nearest kilobyte.  
+The memory usage gauge in MPLAB X will not accurately report the amount of free memory. Because of how the XC32 linker allocates sections, all unused memory will be allocated to the thread stack memory region.  
 
-##Context switch
-The context switch is implemented using the core software 0 interrupt. It should be configured to use the lowest priority in the system:
+##Implementation
+The stack overflow protection works by making sure that accesses beyond the stack limits will trigger an exception. This is implemented in two ways:  
 
-    // set up the software interrupt 0 with a priority of 1, subpriority 0
-    INTSetVectorPriority(INT_CORE_SOFTWARE_0_VECTOR, INT_PRIORITY_LEVEL_1);
-    INTSetVectorSubPriority(INT_CORE_SOFTWARE_0_VECTOR, INT_SUB_PRIORITY_LEVEL_0);
-    INTEnable(INT_CS0, INT_ENABLED);
+*   The interrupt stack is allocated at the start of the KSEG1 data RAM region. Overflowing the interrupt stack will access unmapped memory at the top of KSEG0, triggering an exception.  
+*   The thread stacks are grouped together at the top of RAM. At runtime, the current thread's stack is mapped as user data RAM using the PIC32 bus matrix registers. Overflowing the thread stack will access unmapped USEG memory, again triggering an exception.
 
-The interrupt priority level used by the context switch interrupt should not be configured to use shadow register sets.
-
-##Interrupts
-TNKernel-PIC32 supports nested interrupts. The kernel provides assembly-language macros for calling C-language interrupt service routines, which can use either MIPS32 or MIPS16e mode. Both software and shadow register interrupt context saving is supported:
-
-    #include "tn_port_asm.h"
-    
-    #define _CORE_TIMER_VECTOR 0
-    #define _TIMER1_VECTOR     4
-    #define _INT_UART_1_VECTOR 24
-    
-    # Core timer interrupt handler using software interrupt context saving
-    tn_soft_isr CoreTimerHandler _CORE_TIMER_VECTOR
-    
-    # High-priority UART interrupt handler using shadow register set
-    tn_srs_isr UartHandler _INT_UART_1_VECTOR
-
-##Interrupt stack
-TNKernel-PIC32 uses a separate stack for interrupt handlers. Switching stack pointers is done automatically in the ISR handler wrapper macros. The default size of the interrupt stack in words is set in `tn_port.h`:
-
-    #ifndef TN_INT_STACK_SIZE
-    # define  TN_INT_STACK_SIZE        128
-    #endif
- 
 ---
 
 The kernel is released under the BSD license as follows:
@@ -45,7 +24,7 @@ The kernel is released under the BSD license as follows:
     TNKernel real-time kernel
 
     Copyright © 2004, 2013 Yuri Tiomkin
-    PIC32 version modifications copyright © 2013 Anders Montonen
+    PIC32 version modifications copyright © 2013, 2014 Anders Montonen
     All rights reserved.
 
     Permission to use, copy, modify, and distribute this software in source

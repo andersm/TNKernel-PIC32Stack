@@ -2,8 +2,8 @@
 
   TNKernel real-time kernel
 
-  Copyright © 2004, 2013 Yuri Tiomkin
-  PIC32 version modifications copyright © 2013 Anders Montonen
+  Copyright ï¿½ 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright ï¿½ 2013, 2014 Anders Montonen
   All rights reserved.
 
   Permission to use, copy, modify, and distribute this software in source
@@ -39,7 +39,7 @@
 #if defined (__XC32)
 
 #define align_attr_start
-#define align_attr_end     __attribute__((aligned(0x8)))
+#define align_attr_end     __attribute__((aligned(1024), section("tn_user_stack")))
 
 #else
 

@@ -3,6 +3,7 @@
   TNKernel real-time kernel
 
   Copyright © 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright  2014 Anders Montonen
   All rights reserved.
 
   Permission to use, copy, modify, and distribute this software in source
@@ -30,14 +31,40 @@
 #include "tn.h"
 #include "tn_utils.h"
 
+#define KSEG1_BASE 0xA0000000
+#define KSEG1_RAM_BASE 0xA0000000
+#define USEG_RAM_BASE 0x7F000000
+#define USEG_PTR(x) ((unsigned int*)(((unsigned int)x & 0xFFFFFF) | USEG_RAM_BASE))
+#define KSEG1_PTR(x) ((unsigned int*)(((unsigned int)x & 0xFFFFFF) | KSEG1_RAM_BASE))
+
 extern CDLL_QUEUE tn_blocked_tasks_list;
+
+static unsigned int *mapped_stk_start_ptr(unsigned int *ptr)
+{
+    // Return stack pointer accessible from current context
+    unsigned int *mapped_ptr;
+
+    if (tn_system_state == TN_ST_STATE_RUNNING &&
+        ptr < tn_curr_run_task->stk_start)
+    {
+        // if unmapped stack ptr < current unmapped stack ptr, stack is in kernel program mem
+        mapped_ptr = KSEG1_PTR(ptr);
+    }
+    else
+    {
+        // else stack ptr is in user data mem
+        mapped_ptr = USEG_PTR(ptr);
+    }
+
+    return mapped_ptr;
+}
 
 //-----------------------------------------------------------------------------
 int tn_task_create(TN_TCB * task,                 //-- task TCB
                  void (*task_func)(void *param),  //-- task function
                  int priority,                    //-- task priority
                  unsigned int * task_stack_start, //-- task stack first addr in memory (bottom)
-                 int task_stack_size,             //-- task stack size (in sizeof(void*),not bytes)
+                 int task_stack_size,             //-- task stack size (in sizeof(void*), not bytes)
                  void * param,                    //-- task function parameter
                  int option)                      //-- Creation option
 {
@@ -46,6 +73,8 @@ int tn_task_create(TN_TCB * task,                 //-- task TCB
 
    unsigned int * ptr_stack;
    int i;
+   unsigned int rounded_stack_size;
+   unsigned int stack_size_in_bytes;
 
    //-- Light weight checking of system tasks recreation
 
@@ -70,15 +99,29 @@ int tn_task_create(TN_TCB * task,                 //-- task TCB
 
    task->task_func_addr  = (void*)task_func;
    task->task_func_param = param;
-   task->stk_start       = (unsigned int*)task_stack_start;  //-- Base address of task stack space
-   task->stk_size        = task_stack_size;                  //-- Task stack size (in bytes)
+   task->stk_start       = USEG_PTR(task_stack_start);       //-- Base address of task stack space
+   task->stk_size        = task_stack_size;                  //-- Task stack size (in sizeof(void*), not bytes)
    task->base_priority   = priority;                         //-- Task base priority
    task->activate_count  = 0;                                //-- Activation request count
    task->id_task         = TN_ID_TASK;
 
+   //--- Stack user space mapping
+   stack_size_in_bytes = task_stack_size*sizeof(void*);
+   task->bmxdudba        = (unsigned int)(task_stack_start+1) - stack_size_in_bytes - KSEG1_BASE;
+
+   if (stack_size_in_bytes & 1023)
+       rounded_stack_size = ((stack_size_in_bytes+1023) & (-1024));
+   else
+       rounded_stack_size = stack_size_in_bytes;
+
+   task->bmxdupba = task->bmxdudba+rounded_stack_size;
+
    //-- Fill all task stack space by TN_FILL_STACK_VAL - only inside create_task
 
-   for(ptr_stack = task->stk_start,i = 0;i < task->stk_size; i++)
+   // TODO: Stack may have to be accessed via kseg1 address (before multitasking started),
+   // or kernel program RAM mapping (if address < current task's address) or user program
+   // RAM mapping (if address > current task's address)
+   for(ptr_stack = mapped_stk_start_ptr(task->stk_start),i = 0;i < task->stk_size; i++)
       *ptr_stack-- = TN_FILL_STACK_VAL;
 
    task_set_dormant_state(task);
@@ -86,12 +129,12 @@ int tn_task_create(TN_TCB * task,                 //-- task TCB
    //--- Init task stack
 
    ptr_stack = tn_stack_init(task->task_func_addr,
-                             task->stk_start,
+                             mapped_stk_start_ptr(task->stk_start),
                              task->task_func_param);
 
-   task->task_stk = ptr_stack;    //-- Pointer to task top of stack,
-                                  //-- when not running
-
+   //-- Pointer to task top of stack in user partition,
+   //-- when not running
+   task->task_stk = USEG_PTR(ptr_stack);
 
    //-- Add task to created task queue
 
@@ -264,7 +307,7 @@ int tn_task_wakeup(TN_TCB * task)
       }
       else
       {      // v.2.7 - Thanks to Eugene Scopal
-         //-- Check for 0 - case max wakeup_count value is 1  
+         //-- Check for 0 - case max wakeup_count value is 1
          if(task->wakeup_count == 0) //-- if here - the task is
          {                           //-- not in the SLEEP mode
             task->wakeup_count++;
@@ -485,12 +528,12 @@ int tn_task_irelease_wait(TN_TCB * task)
 //----------------------------------------------------------------------------
 void tn_task_exit(int attr)
 {
-	/*  
+	/*
 	  The structure is used to force GCC compiler properly locate and use
    	'stack_exp' - thanks to Angelo R. Di Filippo
 	*/
    struct  // v.2.7
-   {	
+   {
 #ifdef USE_MUTEXES
       CDLL_QUEUE * que;
       TN_MUTEX * mutex;
@@ -498,7 +541,7 @@ void tn_task_exit(int attr)
       TN_TCB * task;
       volatile int stack_exp[TN_PORT_STACK_EXPAND_AT_EXIT];
    }data;
-	 
+
    TN_CHECK_NON_INT_CONTEXT_NORETVAL
 
 #ifdef TNKERNEL_PORT_MSP430X
@@ -554,15 +597,15 @@ int tn_task_terminate(TN_TCB * task)
 
    int rc;
 /* see the structure purpose in tn_task_exit() */
-	 struct // v.2.7
-	 {
+   struct // v.2.7
+   {
 #ifdef USE_MUTEXES
       CDLL_QUEUE * que;
       TN_MUTEX * mutex;
 #endif
       volatile int stack_exp[TN_PORT_STACK_EXPAND_AT_EXIT];
-   }data; 
-	 
+   }data;
+
 #if TN_CHECK_PARAM
    if(task == NULL)
       return  TERR_WRONG_PARAM;
@@ -609,12 +652,12 @@ int tn_task_terminate(TN_TCB * task)
 #endif
 
       task_set_dormant_state(task);
-			//-- Pointer to task top of the stack when not running
+      //-- Pointer to task top of the stack when not running
 
-      task->task_stk = tn_stack_init(task->task_func_addr,
-                                     task->stk_start,
-                                     task->task_func_param);
-       
+      task->task_stk = USEG_PTR(tn_stack_init(task->task_func_addr,
+                                              mapped_stk_start_ptr(task->stk_start),
+                                              task->task_func_param));
+
       if(task->activate_count > 0) //-- Cannot terminate
       {
          task->activate_count--;
@@ -1021,4 +1064,3 @@ void task_set_dormant_state(TN_TCB* task)
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
 //----------------------------------------------------------------------------
-

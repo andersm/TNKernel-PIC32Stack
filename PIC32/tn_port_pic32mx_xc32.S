@@ -2,8 +2,8 @@
 
   TNKernel real-time kernel
 
-  Copyright © 2004, 2013 Yuri Tiomkin
-  PIC32 version modifications copyright © 2013 Anders Montonen
+  Copyright ï¿½ 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright ï¿½ 2013, 2014 Anders Montonen
   All rights reserved.
 
   ver. 2.7
@@ -53,11 +53,15 @@
     /* Constants */
 
     .equ IFS0CLR, 0xBF881034
+    .equ IFS0SET, 0xBF881038
+    .equ BMXDUDBA, 0xBF882020
+    .equ BMXDUPBA, 0xBF882030
+
     .equ context_size, 128
     .equ buildmode, simulator           /* workaround for buggy simulator */
 
 /*----------------------------------------------------------------------------
-* Interrups should be disabled here
+* Interrupts should be disabled here
 *----------------------------------------------------------------------------*/
     .set noreorder
     .set noat
@@ -70,13 +74,21 @@ tn_start_exe:
     sb      $t0, 0($t1)
 
     lw      $k1, tn_curr_run_task       /* = tn_next_task_to_run */
+
+    /* map new task's stack in useg */
+    lui     $t0, %hi(BMXDUDBA)
+    lw      $t1, 4($k1)
+    lw      $t2, 8($k1)
+    sw      $t1, %lo(BMXDUDBA)($t0)
+    sw      $t2, %lo(BMXDUPBA)($t0)
+
     j       tn_restore_context
     lw      $sp, 0($k1)                 /* load new task SP */
 
     .end tn_start_exe
 
 /*----------------------------------------------------------------------------
-* Interrups should be disabled here
+* Interrupts should be disabled here
 *----------------------------------------------------------------------------*/
     .set noreorder
     .set noat
@@ -84,6 +96,14 @@ tn_start_exe:
 
 tn_switch_context_exit:
     lw      $k1, tn_curr_run_task       /* = tn_next_task_to_run */
+
+    /* map new task's stack in useg */
+    lui     $t0, %hi(BMXDUDBA)
+    lw      $t1, 4($k1)
+    lw      $t2, 8($k1)
+    sw      $t1, %lo(BMXDUDBA)($t0)
+    sw      $t2, %lo(BMXDUPBA)($t0)
+
     j       tn_restore_context
     lw      $sp, 0($k1)                 /* load new task SP */
 
@@ -104,12 +124,11 @@ tn_switch_context:
     lw      $t0, 0($t0)
     lw      $t1, 0($t1)
     beq     $t0, $t1, 1f
-    nop
+    lui     $t1, %hi(IFS0SET)
 
     /* invoke CS0 interrupt */
-    mfc0    $t0, $13                    /* c0_cause */
-    ori     $t0, 256
-    mtc0    $t0, $13                    /* c0_cause */
+    ori     $t0, $zero, 2
+    sw      $t0, %lo(IFS0SET)($t1)
 
 1:
 .if buildmode != simulator
@@ -187,18 +206,24 @@ cs0_int_handler:
 
     la      $t1, tn_next_task_to_run
     lw      $t1, 0($t1)
-    lw      $sp, 0($t1)                 /* get new task's sp */
     sw      $t1, 0($t0)                 /* tn_curr_run_task = tn_next_task_to_run */
 
     mfc0    $k0, $13                    /* c0_cause */
     ins     $k0, $zero, 8, 1            /* clear IP0 */
     mtc0    $k0, $13
 
-    lui     $k0, %hi(IFS0CLR)           /* clear cs0 pending bit */
+    lui     $t0, %hi(IFS0CLR)           /* clear cs0 pending bit */
     ori     $k1, $zero, 2
-    sw      $k1, %lo(IFS0CLR)($k0)
+    sw      $k1, %lo(IFS0CLR)($t0)
 
     mtc0    $t2, $12                    /* re-enable interrupts */
+
+    /* map new task's stack in useg */
+    lw      $t4, 4($t1)                 /* bmxdudba */
+    lw      $t5, 8($t1)                 /* bmxdupba */
+    sw      $t4, %lo(BMXDUDBA)($t0)
+    sw      $t5, %lo(BMXDUPBA)($t0)
+    lw      $sp, 0($t1)                 /* get new task's sp */
 
 tn_restore_context:
 

@@ -2,8 +2,8 @@
 
   TNKernel real-time kernel
 
-  Copyright © 2004, 2013 Yuri Tiomkin
-  PIC32 version modifications copyright © 2013 Anders Montonen
+  Copyright ï¿½ 2004, 2013 Yuri Tiomkin
+  PIC32 version modifications copyright ï¿½ 2013, 2014 Anders Montonen
   All rights reserved.
 
   Permission to use, copy, modify, and distribute this software in source
@@ -83,12 +83,12 @@ unsigned int * tn_stack_init(void * task_func,
 
  //-- filling register's position in the stack - for debugging only
 
-    stk  = (unsigned int *)stack_start;     //-- Load stack pointer
-    *stk-- = 0;                             //-- ABI argument area
-    *stk-- = 0;
-    *stk-- = 0;
-    *stk-- = 0;
-    *stk-- = (unsigned int)task_func;       //-- EPC
+    stk  = (unsigned int *)stack_start - 36; //-- Load stack pointer
+    stk[35] = 0;                             //-- ABI argument area
+    stk[34] = 0;
+    stk[33] = 0;
+    stk[32] = 0;
+    stk[31] = (unsigned int)task_func;       //-- EPC
  //-- CU0 = 0
  //-- RP = 0
  //-- RE = 0
@@ -100,37 +100,37 @@ unsigned int * tn_stack_init(void * task_func,
  //-- ERL = 0
  //-- EXL = 0
  //-- IE = 1
-    *stk-- = 1;                             //-- Status
-    *stk-- = (unsigned int)tn_task_exit;    //-- ra
-    *stk-- = 0x30303030L;                   //-- fp
-    *stk-- = (unsigned int)&_gp;            //-- gp - provided by linker
-    *stk-- = 0x25252525L;                   //-- t9
-    *stk-- = 0x24242424L;                   //-- t8
-    *stk-- = 0x23232323L;                   //-- s7
-    *stk-- = 0x22222222L;                   //-- s6
-    *stk-- = 0x21212121L;                   //-- s5
-    *stk-- = 0x20202020L;                   //-- s4
-    *stk-- = 0x19191919L;                   //-- s3
-    *stk-- = 0x18181818L;                   //-- s2
-    *stk-- = 0x17171717L;                   //-- s1
-    *stk-- = 0x16161616L;                   //-- s0
-    *stk-- = 0x15151515L;                   //-- t7
-    *stk-- = 0x14141414L;                   //-- t6
-    *stk-- = 0x13131313L;                   //-- t5
-    *stk-- = 0x12121212L;                   //-- t4
-    *stk-- = 0x11111111L;                   //-- t3
-    *stk-- = 0x10101010L;                   //-- t2
-    *stk-- = 0x09090909L;                   //-- t1
-    *stk-- = 0x08080808L;                   //-- t0
-    *stk-- = 0x07070707L;                   //-- a3
-    *stk-- = 0x06060606L;                   //-- a2
-    *stk-- = 0x05050505L;                   //-- a1
-    *stk-- = (unsigned int)param;           //-- a0 - task's function argument
-    *stk-- = 0x03030303L;                   //-- v1
-    *stk-- = 0x02020202L;                   //-- v0
-    *stk-- = 0x01010101L;                   //-- at
-    *stk-- = 0x33333333L;                   //-- hi
-    *stk = 0x32323232L;                     //-- lo
+    stk[30] = 1;                             //-- Status
+    stk[29] = (unsigned int)tn_task_exit;    //-- ra
+    stk[28] = 0x30303030L;                   //-- fp
+    stk[27] = (unsigned int)&_gp;            //-- gp - provided by linker
+    stk[26] = 0x25252525L;                   //-- t9
+    stk[25] = 0x24242424L;                   //-- t8
+    stk[24] = 0x23232323L;                   //-- s7
+    stk[23] = 0x22222222L;                   //-- s6
+    stk[22] = 0x21212121L;                   //-- s5
+    stk[21] = 0x20202020L;                   //-- s4
+    stk[20] = 0x19191919L;                   //-- s3
+    stk[19] = 0x18181818L;                   //-- s2
+    stk[18] = 0x17171717L;                   //-- s1
+    stk[17] = 0x16161616L;                   //-- s0
+    stk[16] = 0x15151515L;                   //-- t7
+    stk[15] = 0x14141414L;                   //-- t6
+    stk[14] = 0x13131313L;                   //-- t5
+    stk[13] = 0x12121212L;                   //-- t4
+    stk[12] = 0x11111111L;                   //-- t3
+    stk[11] = 0x10101010L;                   //-- t2
+    stk[10] = 0x09090909L;                   //-- t1
+    stk[9]  = 0x08080808L;                   //-- t0
+    stk[8]  = 0x07070707L;                   //-- a3
+    stk[7]  = 0x06060606L;                   //-- a2
+    stk[6]  = 0x05050505L;                   //-- a1
+    stk[5]  = (unsigned int)param;           //-- a0 - task's function argument
+    stk[4]  = 0x03030303L;                   //-- v1
+    stk[3]  = 0x02020202L;                   //-- v0
+    stk[2]  = 0x01010101L;                   //-- at
+    stk[1]  = 0x33333333L;                   //-- hi
+    stk[0]  = 0x32323232L;                   //-- lo
 
     return stk;
 }
