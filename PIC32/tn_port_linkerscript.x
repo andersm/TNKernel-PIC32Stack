@@ -499,14 +499,14 @@ SECTIONS
     *(.gcc_except_table .gcc_except_table.*)
   } >kseg0_program_mem
     . = ALIGN(4) ;
-  .tn_int_stack ORIGIN(kseg1_data_mem) :
-  {
-    *(tn_int_stack*)
-  } >kseg1_data_mem
-    . = ALIGN(4) ;
   .dbg_data (NOLOAD) :
   {
     . += (DEFINED (_DEBUGGER) ? 0x200 : 0x0);
+  } >kseg1_data_mem
+    . = ALIGN(4) ;
+  .tn_int_stack :
+  {
+    *(tn_int_stack*)
   } >kseg1_data_mem
   .jcr   :
   {

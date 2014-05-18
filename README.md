@@ -10,11 +10,12 @@ To use TNKernel-PIC32Stack, set up your project as you would a normal TNKernel-P
 The **BMXERRDS** bit in the bus matrix configuration registers must not be cleared.  
 Due to hardware limitations, all thread stack allocations will be rounded up to to the nearest kilobyte.  
 The memory usage gauge in MPLAB X will not accurately report the amount of free memory. Because of how the XC32 linker allocates sections, all unused memory will be allocated to the thread stack memory region.  
+When debugging, the first 512 bytes of RAM are reserved by the debug executive, rendering the interrupt stack protection ineffective.
 
 ##Implementation
 The stack overflow protection works by making sure that accesses beyond the stack limits will trigger an exception. This is implemented in two ways:  
 
-*   The interrupt stack is allocated at the start of the KSEG1 data RAM region. Overflowing the interrupt stack will access unmapped memory at the top of KSEG0, triggering an exception.  
+*   The interrupt stack is allocated at the start of the KSEG1 data RAM region. Overflowing the interrupt stack will access unmapped memory at the top of KSEG0, triggering an exception.
 *   The thread stacks are grouped together at the top of RAM. At runtime, the current thread's stack is mapped as user data RAM using the PIC32 bus matrix registers. Overflowing the thread stack will access unmapped USEG memory, again triggering an exception.
 
 ---
