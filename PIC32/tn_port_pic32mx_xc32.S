@@ -124,20 +124,16 @@ tn_switch_context:
     lw      $t0, 0($t0)
     lw      $t1, 0($t1)
     beq     $t0, $t1, 1f
-    lui     $t1, %hi(IFS0SET)
 
-    /* invoke CS0 interrupt */
-    ori     $t0, $zero, 2
-    sw      $t0, %lo(IFS0SET)($t1)
+    /* pend CS0 interrupt */
+    lui     $t0, %hi(IFS0SET)
+    ori     $t1, 2
+    sw      $t1, %lo(IFS0SET)($t0)
+    nop
 
 1:
-.if buildmode != simulator
-    jr.hb   $ra
+    jr      $ra
     nop
-.else
-    jr   $ra
-    ehb
-.endif
 
     .end tn_switch_context
 
